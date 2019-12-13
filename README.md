@@ -19,4 +19,4 @@ Author & License
 Copyright 2019 Timothy A. Davis
 
 Built by `Timothy A. Davis <https://github.com/TimothyADavis>`. Licensed under
-the 2-clause BSD license (see ``LICENSE``).
+the GNU General Public License v3 (GPLv3) license (see ``LICENSE``).
