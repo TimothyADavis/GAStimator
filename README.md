@@ -2,8 +2,7 @@
 Implementation of a Python MCMC gibbs-sampler with adaptive stepping
 
 ### Install
-You can install GAStimator using the standard
-    `pip install gastimator`
+You can install GAStimator with `pip install gastimator`
     
 It requires the modules numpy, matplotlib and progress
 
