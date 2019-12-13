@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 # coding: utf-8
-
-import json
 import numpy as np
 import matplotlib.pyplot as plt
 from progress.bar import Bar
@@ -20,13 +18,13 @@ class priors:
             x = (x - self.mu) / self.sigma
             return np.exp(-x*x/2.0) / np.sqrt(2.0*np.pi) / self.sigma
 
-class pyMCMC:
-  def __init__(self, model,silent=False,seed=None, args=(), kwargs={}):
+class GAStimator:
+  def __init__(self, model,seed=None, args=(), kwargs={}):
       self.targetrate= 0.25 
       self.dec=0.95
       self.inc=1.05
       self.model=model
-      self.silent=silent
+      self.silent=False
       self.rng= np.random.RandomState(seed)
       self.args=args
       self.kwargs=kwargs
@@ -41,7 +39,7 @@ class pyMCMC:
       self.labels=None
       self.change=None
       self.npars=None
-      self.output=None
+
 
       
   def likelihood(self,values):
@@ -288,10 +286,5 @@ class pyMCMC:
     perc = np.percentile(outputvalue, [15.86, 50, 84.14], axis=1)
     sig_bestfit = (perc[2][:] - perc[0][:])/2.
     if not self.silent: print(sig_bestfit)
-    
-    if output:
-        with open(output+'.json', 'w') as f:
-            json.dump([outputvalue.tolist(),outputll.tolist()], f, indent=4)
-            f.close()
 
     return outputvalue, outputll
