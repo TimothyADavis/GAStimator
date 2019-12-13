@@ -12,6 +12,10 @@ It requires the following modules:
 * matplotlib
 * progress
 
+### Documentation
+
+To get you started, see the walk through here: https://github.com/TimothyADavis/GAStimator/blob/master/documentation/GAStimator_Documentation.ipynb
+
 
 Author & License
 -----------------

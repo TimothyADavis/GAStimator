@@ -4,14 +4,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from progress.bar import Bar
 
-class GAStimator:
-  def __init__(self, model,seed=None, args=(), kwargs={}):
+class gastimator:
+  def __init__(self, model,*args, **kwargs):
       self.targetrate= 0.25 
       self.dec=0.95
       self.inc=1.05
       self.model=model
       self.silent=False
-      self.rng= np.random.RandomState(seed)
+      self.rng=None
       self.args=args
       self.kwargs=kwargs
       self.min=None
@@ -232,13 +232,14 @@ class GAStimator:
  
     
            
-  def run(self, fdata, error, niters, numatonce=None, burn=None, nchains=1, plot=True, output=None):
+  def run(self, fdata, error, niters, numatonce=None, burn=None, nchains=1, plot=True, output=None, seed=None): 
     # check all required inputs set
     self.input_checks()
 
     # set up variables needed
     self.fdata=fdata
     self.error=error
+    self.rng=np.random.RandomState(seed)
     self.change, = np.where(self.fixed == False)
     verybestvalues=self.guesses
     verybestknob=None
