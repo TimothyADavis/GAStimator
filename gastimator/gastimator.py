@@ -270,7 +270,7 @@ class gastimator:
     
 
     outputvalue, outputll, best_knob = self.run_a_chain(verybestvalues,niters,numatonce,verybestknob,final=True)
-    if not self.silent: print("verybestparam final",(outputvalue[:,outputll == np.max(outputll)]).reshape(2))
+    if not self.silent: print("verybestparam final",(outputvalue[:,outputll == np.max(outputll)]).reshape(self.npars))
     perc = np.percentile(outputvalue, [15.86, 50, 84.14], axis=1)
     sig_bestfit = (perc[2][:] - perc[0][:])/2.
     if not self.silent: print(sig_bestfit)
