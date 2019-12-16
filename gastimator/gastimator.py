@@ -123,7 +123,7 @@ class gastimator:
 
       outputvals=outputvals[:,accepted.astype(bool)]
       outputll=outputll[accepted.astype(bool)]
-      if plot: plt.clf()
+      if plot: plt.close()
       return outputvals, outputll, acceptrate, knob
 
   def factors(self,n):  
@@ -138,7 +138,8 @@ class gastimator:
          plot2update.plot(i,new_data[index],'bo')
      else: plot2update.plot(i,new_data[index],'ro')
      fig.canvas.draw()
-     plt.pause(0.000001) 
+     fig.canvas.start_event_loop(0.000001)
+     
             
             
   def make_plots(self, niter):
@@ -259,7 +260,7 @@ class gastimator:
         outputvals, outputll, best_knob = self.run_a_chain(self.guesses,niters,numatonce,knob,plot=plot)
         if (np.max(outputll) > verybestll) or (chainno == 0):
             if not self.silent: print("Best chain so far!")
-            verybestvalues=outputvals[:,outputll == np.max(outputll)].reshape(2) 
+            verybestvalues=outputvals[:,outputll == np.max(outputll)].reshape(self.npars) 
             verybestknob=best_knob
             verybestll=np.max(outputll)
             
