@@ -11,6 +11,7 @@ It requires the following modules:
 * numpy
 * matplotlib
 * progress
+* plotbin
 
 ### Documentation
 
