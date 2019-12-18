@@ -196,7 +196,7 @@ class gastimator:
                      
                 oldmean=newmean    
                 count += numatonce
-            if not converged: raise Exception('Chain did not converge in '+np.array(niters).astype(str)+' steps')
+            if not converged: raise Exception('Chain did not converge in '+str(niters)+' steps')
            
                              
         else:
