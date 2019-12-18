@@ -38,7 +38,7 @@ class gastimator:
     
     chi2=((self.fdata - self.model(values,*self.args,**self.kwargs))**2 / self.error**2).sum()
     
-    return -0.5*chi2 + np.log(priorval)
+    return -0.5*chi2 + np.log(priorval, where=(priorval!=0))
     
 
 
@@ -196,7 +196,7 @@ class gastimator:
                      
                 oldmean=newmean    
                 count += numatonce
-            if not converged: raise Exception('Chain did not converge in '+str(niters)+' steps')
+            if not converged: print('WARNING: Chain did not converge in '+str(niters)+' steps')
            
                              
         else:
@@ -247,7 +247,7 @@ class gastimator:
     verybestll=-1e31
 
 
-    if not numatonce:  numatonce=200*self.npars
+    if not numatonce:  numatonce=50*self.npars
     if not burn:  
         self.burn=0.2*niters
     else:
@@ -270,9 +270,12 @@ class gastimator:
     
 
     outputvalue, outputll, best_knob = self.run_a_chain(verybestvalues,niters,numatonce,verybestknob,final=True)
-    if not self.silent: print("verybestparam final",(outputvalue[:,outputll == np.max(outputll)]).reshape(self.npars))
-    perc = np.percentile(outputvalue, [15.86, 50, 84.14], axis=1)
-    sig_bestfit = (perc[2][:] - perc[0][:])/2.
-    if not self.silent: print(sig_bestfit)
-
+    
+    if outputll.size < 1: 
+        print('WARNING: No accepted models. Perhaps you need to increase the number of steps?')
+    else:
+        if not self.silent: print("verybestparam final",(outputvalue[:,outputll == np.max(outputll)]).reshape(self.npars))
+        perc = np.percentile(outputvalue, [15.86, 50, 84.14], axis=1)
+        sig_bestfit = (perc[2][:] - perc[0][:])/2.
+        if not self.silent: print(sig_bestfit)
     return outputvalue, outputll
