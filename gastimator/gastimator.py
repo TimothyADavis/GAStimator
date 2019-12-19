@@ -260,7 +260,8 @@ class gastimator:
         outputvals, outputll, best_knob = self.run_a_chain(self.guesses,niters,numatonce,knob,plot=plot)
         if (np.max(outputll) > verybestll) or (chainno == 0):
             if not self.silent: print("Best chain so far!")
-            verybestvalues=outputvals[:,outputll == np.max(outputll)].reshape(self.npars) 
+            w,=np.where(outputll == np.max(outputll))
+            verybestvalues=outputvals[:,w[0]].reshape(self.npars) 
             verybestknob=best_knob
             verybestll=np.max(outputll)
             
