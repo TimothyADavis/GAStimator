@@ -26,8 +26,6 @@ class gastimator:
       self.change=None
       self.npars=None
 
-
-      
   def likelihood(self,values):
     
     priorval=1
@@ -115,6 +113,8 @@ class gastimator:
           n_accept+=accept
      
       acceptrate=np.float(n_accept)/niter
+      
+
       
       if (holdknob) and (self.burn):
          outputvals= outputvals[:,int(self.burn):-1]
@@ -275,7 +275,9 @@ class gastimator:
     if outputll.size < 1: 
         print('WARNING: No accepted models. Perhaps you need to increase the number of steps?')
     else:
-        if not self.silent: print("verybestparam final",(outputvalue[:,outputll == np.max(outputll)]).reshape(self.npars))
+        if not self.silent: 
+            w,=np.where(outputll == np.max(outputll))
+            print("verybestparam final",(outputvalue[:,w[0]]).reshape(self.npars))
         perc = np.percentile(outputvalue, [15.86, 50, 84.14], axis=1)
         sig_bestfit = (perc[2][:] - perc[0][:])/2.
         if not self.silent: print(sig_bestfit)
