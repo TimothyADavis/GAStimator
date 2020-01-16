@@ -25,6 +25,9 @@ class gastimator:
       self.labels=None
       self.change=None
       self.npars=None
+      self.lastchain=None
+      self.lastchainll=None
+      self.lastchainaccept=None
 
   def likelihood(self,values):
     
@@ -116,15 +119,16 @@ class gastimator:
       
 
       
-      if (holdknob) and (self.burn):
-         outputvals= outputvals[:,int(self.burn):-1]
-         outputll= outputll[int(self.burn):-1]
-         accepted=accepted[int(self.burn):-1]
-
-      outputvals=outputvals[:,accepted.astype(bool)]
-      outputll=outputll[accepted.astype(bool)]
+      if (holdknob):
+         if (self.burn):
+             outputvals= outputvals[:,int(self.burn):-1]
+             outputll= outputll[int(self.burn):-1]
+             accepted=accepted[int(self.burn):-1]
+         outputvals=outputvals[:,accepted.astype(bool)]
+         outputll=outputll[accepted.astype(bool)]
+      
       if plot: plt.close()
-      return outputvals, outputll, acceptrate, knob
+      return outputvals, outputll, accepted, acceptrate, knob
 
   def factors(self,n):  
      facs=np.array(list(x for tup in ([i, n//i] for i in range(1, int(n**0.5)+1) if n % i == 0) for x in tup))
@@ -172,22 +176,28 @@ class gastimator:
         if not final:
             while (count < niters) and (not converged):
 
-                outputvals, outputll, acceptrate, knob = self.chain(startpoint, numatonce, knob, plot=plot, holdknob=False) 
-                startpoint=outputvals[:,-1]
-            
-
+                outputvals, outputll, accepted, acceptrate, knob = self.chain(startpoint, numatonce, knob, plot=plot, holdknob=False)
+                
                 if acceptrate*numatonce > 1:
-                    newmean=np.mean(outputvals,axis=1) 
+                    w,=np.where(accepted) 
+                    startpoint=outputvals[:,w[-1]]
+                    newmean=np.mean(outputvals[:,w],axis=1) 
                 else: newmean=oldmean
             
                 if count == 0:
+                    self.lastchain=outputvals
+                    self.lastchainll=outputll
+                    self.lastchainaccept=accepted
                     if (not self.silent): print("     Chain has not converged - Accept rate: "+str(acceptrate))
                 else:
-                     test=(np.abs(newmean-oldmean) < self.precision)
-                     if test.sum() == test.size and (acceptrate >= self.targetrate):
+                    self.lastchain=np.append(self.lastchain,outputvals,axis=1)
+                    self.lastchainll=np.append(self.lastchainll,outputll)
+                    self.lastchainaccept=np.append(self.lastchainaccept,accepted)
+                    test=(np.abs(newmean-oldmean) < self.precision)
+                    if test.sum() == test.size and (acceptrate >= self.targetrate):
                          converged=1      
                          if (not self.silent): print("Chain converged: LL: "+str(np.max(outputll))+" - Accept rate:"+str(acceptrate))
-                     else:
+                    else:
                          if  (not self.silent): print("     Chain has not converged - Accept rate: "+str(acceptrate))
                          if test.sum() == test.size:
                              if  (not self.silent): print("Target rate not reached")
@@ -202,9 +212,9 @@ class gastimator:
         else:
             if not self.silent:
                 with Bar('Final chain', max=niters-1, suffix='%(percent)d%%') as self.bar:   
-                     outputvals, outputll, acceptrate, knob = self.chain(startpoint, niters, knob, plot=False, holdknob=True)
+                     outputvals, outputll, accepted, acceptrate, knob = self.chain(startpoint, niters, knob, plot=False, holdknob=True)
             else:
-                outputvals, outputll, acceptrate, knob = self.chain(startpoint, niters, knob, plot=False, holdknob=True)
+                outputvals, outputll, accepted, acceptrate, knob = self.chain(startpoint, niters, knob, plot=False, holdknob=True)
            
         best_knob=knob
         return outputvals, outputll, best_knob
