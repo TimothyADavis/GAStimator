@@ -200,7 +200,7 @@ class gastimator:
                     else:
                          if  (not self.silent): print("     Chain has not converged - Accept rate: "+str(acceptrate))
                          if test.sum() == test.size:
-                             if  (not self.silent): print("Target rate not reached")
+                             if  (not self.silent): print("     Target rate not reached")
                          else: 
                              if  (not self.silent): print("     Still varying: "+str(self.labels[~test]))
                      
@@ -276,8 +276,11 @@ class gastimator:
             verybestll=np.max(outputll)
             
             
-    if not self.silent: print("verybestparam",verybestvalues)
-    if not self.silent: print("Starting final chain")
+    if not self.silent: 
+        print("Best fit:")
+        for i in range(0,self.labels.size):
+            print("  "+self.labels[i]+":",verybestvalues[i])
+        print("Starting final chain")
     
 
     outputvalue, outputll, best_knob = self.run_a_chain(verybestvalues,niters,numatonce,verybestknob,final=True)
@@ -287,8 +290,17 @@ class gastimator:
     else:
         if not self.silent: 
             w,=np.where(outputll == np.max(outputll))
-            print("verybestparam final",(outputvalue[:,w[0]]).reshape(self.npars))
-        perc = np.percentile(outputvalue, [15.86, 50, 84.14], axis=1)
-        sig_bestfit = (perc[2][:] - perc[0][:])/2.
-        if not self.silent: print(sig_bestfit)
+            perc = np.percentile(outputvalue, [15.86, 50, 84.14], axis=1)
+            sig_bestfit_up = (perc[2][:] - perc[1][:])
+            sig_bestfit_down = (perc[1][:] - perc[0][:])
+            
+            print("Final best fit values and 1sigma errors:")
+            for i in range(0,self.labels.size):
+                if self.fixed[i]:
+                    print("  "+self.labels[i]+":",perc[1][i],"(Fixed)")
+                else:
+                    if np.abs(((sig_bestfit_up[i]/sig_bestfit_down[i])-1)) < 0.1:
+                        print("  "+self.labels[i]+":",perc[1][i],"±",np.mean([sig_bestfit_up[i],sig_bestfit_down[i]]))
+                    else:                    
+                        print("  "+self.labels[i]+":",perc[1][i],"+",sig_bestfit_up[i],"-",sig_bestfit_down[i])
     return outputvalue, outputll
