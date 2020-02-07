@@ -230,7 +230,7 @@ class gastimator:
          raise Exception('Please set initial guesses')
     self.npars=self.guesses.size
     
-    names=["minimum","maximum","fixed","precision","labels"]    
+    names=["minimum","maximum","precision","labels"]    
     check=[self.min,self.max,self.precision,self.labels]
 
     for x, nam in zip(check,names):
