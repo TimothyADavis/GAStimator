@@ -220,24 +220,30 @@ class gastimator:
         return outputvals, outputll, best_knob
                     
   def input_checks(self):
+    self.guesses=np.array(self.guesses)
+    self.min=np.array(self.min)
+    self.max=np.array(self.max)
+    self.precision=np.array(self.precision)
+    self.labels=np.array(self.labels)
+    
     if np.any(self.guesses == None):
          raise Exception('Please set initial guesses')
-    
     self.npars=self.guesses.size
-         
-    if np.any(self.fixed == None):
-             self.fixed=np.zeros(self.npars, dtype=bool)
-             print("You did not specify if any variables are fixed - I will continue assuming that none are")
-        
+    
     names=["minimum","maximum","fixed","precision","labels"]    
     check=[self.min,self.max,self.precision,self.labels]
+
     for x, nam in zip(check,names):
         if np.any(x == None):
              raise Exception('Please set parameter '+str(nam))
         else:
              if x.size != self.npars:
                  raise Exception('Number of constraints in '+str(nam)+' does not match number of parameters')
-     
+         
+    if np.any(self.fixed == None):
+             self.fixed=np.zeros(self.npars, dtype=bool)
+             print("You did not specify if any variables are fixed - I will continue assuming that none are")
+        
     if np.any(self.prior_func == None):
              self.prior_func=np.zeros(self.npars, dtype=bool)    
  
