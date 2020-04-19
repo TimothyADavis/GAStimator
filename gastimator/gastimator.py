@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from progress.bar import Bar
 
+
 class gastimator:
   def __init__(self, model,*args, **kwargs):
       self.targetrate= 0.25 
@@ -53,6 +54,8 @@ class gastimator:
           newvals[changethistime]=values[changethistime]+(self.rng.randn(1)*knob[changethistime])
           if (newvals[changethistime] >= self.min[changethistime]) * (newvals[changethistime] <= self.max[changethistime]): acceptable=True
           if cnt > 5000: raise Exception('Cannot find a good step. Check input parameters')
+          cnt+=1
+          
       return newvals
           
 
@@ -246,8 +249,15 @@ class gastimator:
         
     if np.any(self.prior_func == None):
              self.prior_func=np.zeros(self.npars, dtype=bool)    
+             
+    if np.any((self.max-self.min) < 0):
+             raise Exception('Parameter(s) '+str(self.labels[(self.max-self.min) < 0])+' have incorrect minumum/maximum bounds')
  
-    
+    if np.any((self.guesses<self.min)):
+             raise Exception('Parameter(s) '+str(self.labels[(self.guesses<self.min)])+' have an initial guess lower than the minimum allowed.')
+             
+    if np.any((self.guesses>self.max)):
+             raise Exception('Parameter(s) '+str(self.labels[(self.guesses>self.max)])+' have an initial guess higher than the maximum allowed.')
            
   def run(self, fdata, error, niters, numatonce=None, burn=None, nchains=1, plot=True, output=None, seed=None): 
     # check all required inputs set
