@@ -4,6 +4,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from progress.bar import Bar
 import multiprocessing
+from joblib import Parallel, delayed
+
+def unwrap_self(args, **kwarg):
+    return gastimator.run_a_chain(*args, **kwarg)
 
 class gastimator:
   def __init__(self, model,*args, **kwargs):
@@ -70,6 +74,8 @@ class gastimator:
       
       newll=self.likelihood(tryvals) 
       if np.isnan(newll):
+        print("Your function returned a Nan for the following parameters",tryvals)
+        print("Attempting to continue...")
         ll=-1e20
       
       ratio=  newll-oldll
@@ -111,7 +117,7 @@ class gastimator:
       
       for i in range(1,niter):
           newval, newll, accept, tryvals, knob =self.evaluate_step(outputvals[:,i-1],outputll[i-1],self.change[gibbs_change[i]],knob,holdknob=holdknob)
-          if holdknob and not self.silent: self.bar.next()
+          if holdknob and not self.silent and self.nprocesses == 1: self.bar.next()
           if plot:
               self.update_plot(fig, ax,self.change[gibbs_change[i]],i,tryvals, accept)
 
@@ -172,7 +178,6 @@ class gastimator:
 
         
   def run_a_chain(self,startguess,niters,numatonce,knob,plot=True,final=False):
-        
         count=0
         converged=False
         oldmean=self.guesses*0.0
@@ -216,9 +221,9 @@ class gastimator:
            
                              
         else:
-            if not self.silent:
-                with Bar('Final chain', max=niters-1, suffix='%(percent)d%%') as self.bar:   
-                     outputvals, outputll, accepted, acceptrate, knob = self.chain(startpoint, niters, knob, plot=False, holdknob=True)
+            if (self.silent == False)&(self.nprocesses==1):
+                with Bar('Final chain', max=niters-1, suffix='%(percent)d%%') as self.bar:
+                    outputvals, outputll, accepted, acceptrate, knob = self.chain(startpoint, niters, knob, plot=False, holdknob=True)
             else:
                 outputvals, outputll, accepted, acceptrate, knob = self.chain(startpoint, niters, knob, plot=False, holdknob=True)
            
@@ -262,10 +267,7 @@ class gastimator:
     if np.any((self.guesses>self.max)):
              raise Exception('Parameter(s) '+str(self.labels[(self.guesses>self.max)])+' have an initial guess higher than the maximum allowed.')
 
-  def run_a_multi_chain(self,startguess,niters,numatonce,knob,send_end):
-      outv,outl,_=self.run_a_chain(startguess,niters,numatonce,knob,send_end,plot=False,final=True)
-      send_end.send(outv,outl)
-      
+
   def run(self, fdata, error, niters, numatonce=None, burn=None, nchains=1, plot=True, output=None, seed=None): 
     # check all required inputs set
     self.input_checks()
@@ -305,7 +307,15 @@ class gastimator:
             print("  "+self.labels[i]+":",verybestvalues[i])
         print("Starting final chain")
 
-    outputvalue, outputll, _ = self.run_a_chain(verybestvalues,niters,numatonce,verybestknob,final=True)
+    if (self.silent==False)&(self.nprocesses>1):
+        verboselev=10
+    else:
+        verboselev=0
+    results = []
+    results= Parallel(n_jobs= self.nprocesses, verbose=verboselev)(delayed(unwrap_self)(i) for i in zip([self]*self.nprocesses, [verybestvalues]*self.nprocesses,[int(float(niters)/float(self.nprocesses))]*self.nprocesses,[numatonce]*self.nprocesses,[verybestknob]*self.nprocesses, [False]*self.nprocesses, [True]*self.nprocesses))
+    results=np.array(results)
+    outputvalue= np.concatenate(results[:,0],axis=1)
+    outputll= np.concatenate(results[:,1])
     
     if outputll.size < 1: 
         print('WARNING: No accepted models. Perhaps you need to increase the number of steps?')
