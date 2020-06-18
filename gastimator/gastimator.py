@@ -3,7 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from progress.bar import Bar
-
+import multiprocessing
 
 class gastimator:
   def __init__(self, model,*args, **kwargs):
@@ -29,6 +29,7 @@ class gastimator:
       self.lastchain=None
       self.lastchainll=None
       self.lastchainaccept=None
+      self.nprocesses=np.int(multiprocessing.cpu_count())-1
 
   def likelihood(self,values):
     
@@ -41,6 +42,7 @@ class gastimator:
     chi2=((self.fdata - self.model(values,*self.args,**self.kwargs))**2 / self.error**2).sum()
     
     return -0.5*chi2 + np.log(priorval, where=(priorval!=0))
+
     
 
 
@@ -67,7 +69,8 @@ class gastimator:
       tryvals=self.take_step(oldvalues,changethistime, knob)
       
       newll=self.likelihood(tryvals) 
-      
+      if np.isnan(newll):
+        ll=-1e20
       
       ratio=  newll-oldll
       randacc=np.log(self.rng.uniform(0,1,1))
@@ -258,7 +261,11 @@ class gastimator:
              
     if np.any((self.guesses>self.max)):
              raise Exception('Parameter(s) '+str(self.labels[(self.guesses>self.max)])+' have an initial guess higher than the maximum allowed.')
-           
+
+  def run_a_multi_chain(self,startguess,niters,numatonce,knob,send_end):
+      outv,outl,_=self.run_a_chain(startguess,niters,numatonce,knob,send_end,plot=False,final=True)
+      send_end.send(outv,outl)
+      
   def run(self, fdata, error, niters, numatonce=None, burn=None, nchains=1, plot=True, output=None, seed=None): 
     # check all required inputs set
     self.input_checks()
@@ -297,9 +304,8 @@ class gastimator:
         for i in range(0,self.labels.size):
             print("  "+self.labels[i]+":",verybestvalues[i])
         print("Starting final chain")
-    
 
-    outputvalue, outputll, best_knob = self.run_a_chain(verybestvalues,niters,numatonce,verybestknob,final=True)
+    outputvalue, outputll, _ = self.run_a_chain(verybestvalues,niters,numatonce,verybestknob,final=True)
     
     if outputll.size < 1: 
         print('WARNING: No accepted models. Perhaps you need to increase the number of steps?')
