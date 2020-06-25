@@ -3,8 +3,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from progress.bar import Bar
-import multiprocessing
-from joblib import Parallel, delayed
+
+from joblib import Parallel, delayed,cpu_count  
 
 def unwrap_self(args, **kwarg):
     return gastimator.run_a_chain(*args, **kwarg)
@@ -33,7 +33,7 @@ class gastimator:
       self.lastchain=None
       self.lastchainll=None
       self.lastchainaccept=None
-      self.nprocesses=np.int(multiprocessing.cpu_count())-1
+      self.nprocesses=np.int(cpu_count())-1
 
   def likelihood(self,values):
     
