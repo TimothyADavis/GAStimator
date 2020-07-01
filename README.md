@@ -10,8 +10,8 @@ It requires the following modules:
 
 * numpy
 * matplotlib
-* progress
 * plotbin
+* joblib
 
 ### Documentation
 
