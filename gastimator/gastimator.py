@@ -132,10 +132,6 @@ class gastimator:
 
       
       if (holdknob):
-         if (self.burn):
-             outputvals= outputvals[:,int(self.burn):-1]
-             outputll= outputll[int(self.burn):-1]
-             accepted=accepted[int(self.burn):-1]
          outputvals=outputvals[:,accepted.astype(bool)]
          outputll=outputll[accepted.astype(bool)]
       
@@ -269,7 +265,7 @@ class gastimator:
              raise Exception('Parameter(s) '+str(self.labels[(self.guesses>self.max)])+' have an initial guess higher than the maximum allowed.')
 
 
-  def run(self, fdata, error, niters, numatonce=None, burn=None, nchains=1, plot=True, output=None, seed=None): 
+  def run(self, fdata, error, niters, numatonce=None, nchains=1, plot=True, output=None, seed=None): 
     # check all required inputs set
     self.input_checks()
 
@@ -284,10 +280,7 @@ class gastimator:
 
 
     if not numatonce:  numatonce=50*self.npars
-    if not burn:  
-        self.burn=0.2*niters
-    else:
-        self.burn=burn
+    
 
 
     for chainno in range(0,nchains):
