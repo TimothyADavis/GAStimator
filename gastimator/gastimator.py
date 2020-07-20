@@ -225,6 +225,7 @@ class gastimator:
                 with Bar('Final chain', max=niters-1, suffix='%(percent)d%%') as self.bar:
                     outputvals, outputll, accepted, acceptrate, knob = self.chain(startpoint, niters, knob, plot=False, holdknob=True)
             else:
+                self.rng=np.random.RandomState() #refresh the RNG
                 outputvals, outputll, accepted, acceptrate, knob = self.chain(startpoint, niters, knob, plot=False, holdknob=True)
            
         best_knob=knob
