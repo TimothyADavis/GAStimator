@@ -42,9 +42,7 @@ class gastimator:
         if callable(prior):
             priorval*=prior(val)
     
-    
     chi2=((self.fdata - self.model(values,*self.args,**self.kwargs))**2 / self.error**2).sum()
-    
     return -0.5*chi2 + np.log(priorval, where=(priorval!=0))
 
     
@@ -281,6 +279,9 @@ class gastimator:
     verybestvalues=self.guesses
     verybestknob=None
     verybestll=-1e31
+
+    if ((0.8*(niters/self.nprocesses)) < 1000) & (self.nprocesses > 1):
+        print("WARNING: The chain assigned to each processor will be very short (<1250 steps) - consider reducing 'nprocesses'.")
 
 
     if not numatonce:  numatonce=50*self.npars
