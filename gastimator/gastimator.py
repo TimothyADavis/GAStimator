@@ -3,7 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from progress.bar import Bar
-
+from tqdm import tqdm 
 from joblib import Parallel, delayed,cpu_count  
 
 def unwrap_self(args, **kwarg):
@@ -38,11 +38,11 @@ class gastimator:
   def likelihood(self,values):
     
     priorval=1
-    for prior,val in zip(self.prior_func,values):
+    for ival,prior in enumerate(self.prior_func):
         if callable(prior):
-            priorval*=prior(val)
+            priorval*=prior(values[ival],allvalues=values,ival=ival)
     
-    chi2=((self.fdata - self.model(values,*self.args,**self.kwargs))**2 / self.error**2).sum()
+    chi2=np.nansum((self.fdata - self.model(values,*self.args,**self.kwargs))**2 / self.error**2)
     return -0.5*chi2 + np.log(priorval, where=(priorval!=0))
 
     
@@ -315,7 +315,7 @@ class gastimator:
         verboselev=0
     results = []
     results= Parallel(n_jobs= self.nprocesses, verbose=verboselev)(delayed(unwrap_self)(i) for i in zip([self]*self.nprocesses, [verybestvalues]*self.nprocesses,[int(float(niters)/float(self.nprocesses))]*self.nprocesses,[numatonce]*self.nprocesses,[verybestknob]*self.nprocesses, [False]*self.nprocesses, [True]*self.nprocesses))
-    results=np.array(results)
+    results=np.array(results,dtype=object)
     outputvalue= np.concatenate(results[:,0],axis=1)
     outputll= np.concatenate(results[:,1])
     

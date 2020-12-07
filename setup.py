@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
  
 setup(name='gastimator',
-       version='0.3.6',
+       version='0.3.7',
        description='Implementation of a Python MCMC gibbs-sampler with adaptive stepping',
        url='https://github.com/TimothyADavis/GAStimator',
        author='Timothy A. Davis',
@@ -19,7 +19,7 @@ setup(name='gastimator',
            'matplotlib',
            'progress',
            'plotbin',
-           'joblib',
+           'joblib>=0.16.0',
        ],
        classifiers=[
          'Development Status :: 3 - Alpha',
