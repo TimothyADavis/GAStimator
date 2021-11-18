@@ -2,10 +2,16 @@
 # coding: utf-8
 import numpy as np
 import matplotlib.pyplot as plt
-from progress.bar import Bar
 from tqdm import tqdm 
 from joblib import Parallel, delayed,cpu_count  
+import contextlib
 
+
+def lnlike(data,model,error):
+  # default log-likelihood function
+  chi2=np.nansum((data - model)**2 / error**2)      
+  return -0.5*chi2
+      
 def unwrap_self(args, **kwarg):
     return gastimator.run_a_chain(*args, **kwarg)
 
@@ -34,7 +40,9 @@ class gastimator:
       self.lastchainll=None
       self.lastchainaccept=None
       self.nprocesses=np.int(cpu_count())-1
+      self.lnlike_func=lnlike
 
+    
   def likelihood(self,values):
     
     priorval=1
@@ -42,8 +50,8 @@ class gastimator:
         if callable(prior):
             priorval*=prior(values[ival],allvalues=values,ival=ival)
     
-    chi2=np.nansum((self.fdata - self.model(values,*self.args,**self.kwargs))**2 / self.error**2)
-    return -0.5*chi2 + np.log(priorval, where=(priorval!=0))
+    model=self.model(values,*self.args,**self.kwargs)
+    return self.lnlike_func(self.fdata,model,self.error) + np.log(priorval, where=(priorval!=0))
 
     
 
@@ -93,7 +101,7 @@ class gastimator:
   
   
 
-  def chain(self, values, niter, knob, plot=True, holdknob=False, fig=None, ax=None):
+  def chain(self, values, niter, knob, plot=True, holdknob=False, fig=None, ax=None,progress=False,progid=0):
      
 
       if plot:
@@ -113,17 +121,20 @@ class gastimator:
       outputll[0]=bestll
       n_accept=0.
       
+      if progress:
+          pbar = tqdm(total=niter-1,position=progid)
+          
       for i in range(1,niter):
           newval, newll, accept, tryvals, knob =self.evaluate_step(outputvals[:,i-1],outputll[i-1],self.change[gibbs_change[i]],knob,holdknob=holdknob)
-          if holdknob and not self.silent and self.nprocesses == 1: self.bar.next()
+          if progress: pbar.update(1)
           if plot:
               self.update_plot(fig, ax,self.change[gibbs_change[i]],i,tryvals, accept)
-
-              
           outputvals[:,i]=newval
           outputll[i]=newll
           accepted[i]=accept
           n_accept+=accept
+          
+          
      
       acceptrate=np.float(n_accept)/niter
       
@@ -175,7 +186,7 @@ class gastimator:
 
 
         
-  def run_a_chain(self,startguess,niters,numatonce,knob,plot=True,final=False):
+  def run_a_chain(self,startguess,niters,numatonce,knob,plot=True,final=False,progid=0):
         count=0
         converged=False
         oldmean=self.guesses*0.0
@@ -219,13 +230,12 @@ class gastimator:
            
                              
         else:
-            if (self.silent == False)&(self.nprocesses==1):
-                with Bar('Final chain', max=niters-1, suffix='%(percent)d%%') as self.bar:
-                    outputvals, outputll, accepted, acceptrate, knob = self.chain(startpoint, niters, knob, plot=False, holdknob=True)
-            else:
-                self.rng=np.random.RandomState() #refresh the RNG
-                outputvals, outputll, accepted, acceptrate, knob = self.chain(startpoint, niters, knob, plot=False, holdknob=True)
-           
+            #if (self.silent == False)&(self.nprocesses==1):
+            #        outputvals, outputll, accepted, acceptrate, knob = self.chain(startpoint, niters, knob, plot=False, holdknob=True,progress=True,progid=progid)
+            #else:
+            self.rng=np.random.RandomState() #refresh the RNG
+            outputvals, outputll, accepted, acceptrate, knob = self.chain(startpoint, niters, knob, plot=False, holdknob=True,progress=True,progid=progid)
+            
         best_knob=knob
         return outputvals, outputll, best_knob
                     
@@ -236,9 +246,26 @@ class gastimator:
     self.precision=np.array(self.precision)
     self.labels=np.array(self.labels)
     
+
+    
+                
     if np.any(self.guesses == None):
          raise Exception('Please set initial guesses')
     self.npars=self.guesses.size
+    
+    if np.all(np.array(self.prior_func) == None):
+             self.prior_func=(np.zeros(self.npars, dtype=bool)).tolist()
+    else:
+        try:
+            if len(self.prior_func) != self.npars:
+                 raise Exception('Number of priors given does not match number of parameters')
+        except:
+            if self.npars != 1:
+                raise Exception('Number of priors given does not match number of parameters')
+
+             
+    
+    
     
     names=["minimum","maximum","precision","labels"]    
     check=[self.min,self.max,self.precision,self.labels]
@@ -254,8 +281,7 @@ class gastimator:
              self.fixed=np.zeros(self.npars, dtype=bool)
              print("You did not specify if any variables are fixed - I will continue assuming that none are")
         
-    if np.any(self.prior_func == None):
-             self.prior_func=np.zeros(self.npars, dtype=bool)    
+
              
     if np.any((self.max-self.min) < 0):
              raise Exception('Parameter(s) '+str(self.labels[(self.max-self.min) < 0])+' have incorrect minumum/maximum bounds')
@@ -314,7 +340,7 @@ class gastimator:
     else:
         verboselev=0
     results = []
-    results= Parallel(n_jobs= self.nprocesses, verbose=verboselev)(delayed(unwrap_self)(i) for i in zip([self]*self.nprocesses, [verybestvalues]*self.nprocesses,[int(float(niters)/float(self.nprocesses))]*self.nprocesses,[numatonce]*self.nprocesses,[verybestknob]*self.nprocesses, [False]*self.nprocesses, [True]*self.nprocesses))
+    results= Parallel(n_jobs= self.nprocesses, verbose=verboselev)(delayed(unwrap_self)(i) for i in zip([self]*self.nprocesses, [verybestvalues]*self.nprocesses,[int(float(niters)/float(self.nprocesses))]*self.nprocesses,[numatonce]*self.nprocesses,[verybestknob]*self.nprocesses, [False]*self.nprocesses, [True]*self.nprocesses,np.arange(self.nprocesses)))
     results=np.array(results,dtype=object)
     outputvalue= np.concatenate(results[:,0],axis=1)
     outputll= np.concatenate(results[:,1])
