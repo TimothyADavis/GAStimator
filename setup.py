@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
  
 setup(name='gastimator',
-       version='0.3.9',
+       version='0.4.0',
        description='Implementation of a Python MCMC gibbs-sampler with adaptive stepping',
        url='https://github.com/TimothyADavis/GAStimator',
        author='Timothy A. Davis',

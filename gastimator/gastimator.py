@@ -4,8 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm 
 from joblib import Parallel, delayed,cpu_count  
-import contextlib
-
+from joblib.externals.loky import get_reusable_executor
 
 def lnlike(data,model,error):
   # default log-likelihood function
@@ -121,12 +120,12 @@ class gastimator:
       outputll[0]=bestll
       n_accept=0.
       
-      if progress:
-          pbar = tqdm(total=niter-1,position=progid)
+      if progress and (progid==0):
+          pbar = tqdm(total=(niter)*self.nprocesses)
           
       for i in range(1,niter):
           newval, newll, accept, tryvals, knob =self.evaluate_step(outputvals[:,i-1],outputll[i-1],self.change[gibbs_change[i]],knob,holdknob=holdknob)
-          if progress: pbar.update(1)
+          if progress and (progid==0): pbar.update(self.nprocesses)
           if plot:
               self.update_plot(fig, ax,self.change[gibbs_change[i]],i,tryvals, accept)
           outputvals[:,i]=newval
@@ -149,6 +148,8 @@ class gastimator:
          outputll=outputll[accepted.astype(bool)]
       
       if plot: plt.close()
+      if progress and (progid==0):
+          pbar.close()
       return outputvals, outputll, accepted, acceptrate, knob
 
   def factors(self,n):  
@@ -196,7 +197,7 @@ class gastimator:
         if not final:
             while (count < niters) and (not converged):
 
-                outputvals, outputll, accepted, acceptrate, knob = self.chain(startpoint, numatonce, knob, plot=plot, holdknob=False)
+                outputvals, outputll, accepted, acceptrate, knob = self.chain(startpoint, numatonce, knob, plot=plot, holdknob=False,progress=False)
                 
                 if acceptrate*numatonce > 1:
                     w,=np.where(accepted) 
@@ -340,8 +341,14 @@ class gastimator:
     else:
         verboselev=0
     results = []
-    results= Parallel(n_jobs= self.nprocesses, verbose=verboselev)(delayed(unwrap_self)(i) for i in zip([self]*self.nprocesses, [verybestvalues]*self.nprocesses,[int(float(niters)/float(self.nprocesses))]*self.nprocesses,[numatonce]*self.nprocesses,[verybestknob]*self.nprocesses, [False]*self.nprocesses, [True]*self.nprocesses,np.arange(self.nprocesses)))
+    par= Parallel(n_jobs= self.nprocesses, verbose=verboselev)
+    
+    results=par(delayed(unwrap_self)(i) for i in zip([self]*self.nprocesses, [verybestvalues]*self.nprocesses,[int(float(niters)/float(self.nprocesses))]*self.nprocesses,[numatonce]*self.nprocesses,[verybestknob]*self.nprocesses, [False]*self.nprocesses, [True]*self.nprocesses,np.arange(self.nprocesses)))
     results=np.array(results,dtype=object)
+    
+    par._terminate_backend()
+    get_reusable_executor().shutdown(wait=True)
+    
     outputvalue= np.concatenate(results[:,0],axis=1)
     outputll= np.concatenate(results[:,1])
     
