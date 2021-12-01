@@ -6,6 +6,7 @@ from tqdm import tqdm
 from joblib import Parallel, delayed,cpu_count  
 from joblib.externals.loky import get_reusable_executor
 
+
 def lnlike(data,model,error):
   # default log-likelihood function
   chi2=np.nansum((data - model)**2 / error**2)      
@@ -40,7 +41,7 @@ class gastimator:
       self.lastchainaccept=None
       self.nprocesses=np.int(cpu_count())-1
       self.lnlike_func=lnlike
-
+      
     
   def likelihood(self,values):
     
@@ -122,10 +123,11 @@ class gastimator:
       
       if progress and (progid==0):
           pbar = tqdm(total=(niter)*self.nprocesses)
-          
+
       for i in range(1,niter):
           newval, newll, accept, tryvals, knob =self.evaluate_step(outputvals[:,i-1],outputll[i-1],self.change[gibbs_change[i]],knob,holdknob=holdknob)
-          if progress and (progid==0): pbar.update(self.nprocesses)
+          if progress and (progid==0): 
+              pbar.update(self.nprocesses)
           if plot:
               self.update_plot(fig, ax,self.change[gibbs_change[i]],i,tryvals, accept)
           outputvals[:,i]=newval
@@ -193,12 +195,14 @@ class gastimator:
         oldmean=self.guesses*0.0
         newmean=0.0
         startpoint=startguess.copy()
-        
+        self.rng=np.random.RandomState()
         if not final:
             while (count < niters) and (not converged):
 
                 outputvals, outputll, accepted, acceptrate, knob = self.chain(startpoint, numatonce, knob, plot=plot, holdknob=False,progress=False)
-                
+
+                    
+                    
                 if acceptrate*numatonce > 1:
                     w,=np.where(accepted) 
                     startpoint=outputvals[:,w[-1]]
@@ -209,7 +213,7 @@ class gastimator:
                     self.lastchain=outputvals
                     self.lastchainll=outputll
                     self.lastchainaccept=accepted
-                    if (not self.silent): print("     Chain has not converged - Accept rate: "+str(acceptrate))
+                    if (not self.silent): print("     Chain "+str(progid)+" has not converged - Accept rate: "+str(acceptrate))
                 else:
                     self.lastchain=np.append(self.lastchain,outputvals,axis=1)
                     self.lastchainll=np.append(self.lastchainll,outputll)
@@ -217,24 +221,24 @@ class gastimator:
                     test=(np.abs(newmean-oldmean) < self.precision)
                     if test.sum() == test.size and (acceptrate >= self.targetrate):
                          converged=1      
-                         if (not self.silent): print("Chain converged: LL: "+str(np.max(outputll))+" - Accept rate:"+str(acceptrate))
+                         if (not self.silent): print("Chain "+str(progid)+" converged: LL: "+str(np.max(outputll))+" - Accept rate:"+str(acceptrate))
                     else:
-                         if  (not self.silent): print("     Chain has not converged - Accept rate: "+str(acceptrate))
+                         if  (not self.silent): print("     Chain "+str(progid)+" has not converged - Accept rate: "+str(acceptrate))
                          if test.sum() == test.size:
-                             if  (not self.silent): print("     Target rate not reached")
+                             if  (not self.silent): print("     --> Target rate not reached")
                          else: 
-                             if  (not self.silent): print("     Still varying: "+str(self.labels[~test]))
+                             if  (not self.silent): print("     --> Still varying: "+str(self.labels[~test]))
                      
                 oldmean=newmean    
                 count += numatonce
-            if not converged: print('WARNING: Chain did not converge in '+str(niters)+' steps')
+            if not converged: print('WARNING: Chain '+str(progid)+' did not converge in '+str(niters)+' steps')
            
                              
         else:
             #if (self.silent == False)&(self.nprocesses==1):
             #        outputvals, outputll, accepted, acceptrate, knob = self.chain(startpoint, niters, knob, plot=False, holdknob=True,progress=True,progid=progid)
             #else:
-            self.rng=np.random.RandomState() #refresh the RNG
+            #self.rng=np.random.RandomState() #refresh the RNG
             outputvals, outputll, accepted, acceptrate, knob = self.chain(startpoint, niters, knob, plot=False, holdknob=True,progress=True,progid=progid)
             
         best_knob=knob
@@ -317,17 +321,32 @@ class gastimator:
     else:
         self.burn=burn
 
+    if (self.silent==False)&(self.nprocesses>1):
+        verboselev=10
+    else:
+        verboselev=0
 
+    self.progline=[]
     for chainno in range(0,nchains):
-        if not self.silent: print('Doing chain '+np.str(chainno+1))
-        knob=(0.5*(self.max-self.min))
-        outputvals, outputll, best_knob = self.run_a_chain(self.guesses,niters,numatonce,knob,plot=plot)
-        if (np.max(outputll) > verybestll) or (chainno == 0):
-            if not self.silent: print("Best chain so far!")
-            w,=np.where(outputll == np.max(outputll))
-            verybestvalues=outputvals[:,w[0]].reshape(self.npars) 
-            verybestknob=best_knob
-            verybestll=np.max(outputll)
+        self.progline.append('Doing chain '+np.str(chainno+1))
+        
+    knob=(0.5*(self.max-self.min))
+        
+    par= Parallel(n_jobs= self.nprocesses, verbose=verboselev)
+    
+    results=par(delayed(unwrap_self)(i) for i in zip([self]*nchains, [self.guesses]*nchains,[int(float(niters))]*nchains,[numatonce]*nchains,[knob]*nchains, [False]*nchains, [False]*nchains,np.arange(nchains)))
+    results=np.array(results,dtype=object)
+    
+    par._terminate_backend()
+    get_reusable_executor().shutdown(wait=True)
+    
+    bestchain=np.argmax(np.max(np.stack(results[:,1]),axis=1))
+    bestvalinbestchain=np.argmax(results[bestchain,1])
+    
+
+    verybestvalues=np.stack(results[bestchain,0])[:,bestvalinbestchain]
+    verybestknob=results[bestchain,2]
+    verybestll=np.stack(results[bestchain,1])[bestvalinbestchain]
             
             
     if not self.silent: 
@@ -336,16 +355,12 @@ class gastimator:
             print("  "+self.labels[i]+":",verybestvalues[i])
         print("Starting final chain")
 
-    if (self.silent==False)&(self.nprocesses>1):
-        verboselev=10
-    else:
-        verboselev=0
+
     results = []
     par= Parallel(n_jobs= self.nprocesses, verbose=verboselev)
     
     results=par(delayed(unwrap_self)(i) for i in zip([self]*self.nprocesses, [verybestvalues]*self.nprocesses,[int(float(niters)/float(self.nprocesses))]*self.nprocesses,[numatonce]*self.nprocesses,[verybestknob]*self.nprocesses, [False]*self.nprocesses, [True]*self.nprocesses,np.arange(self.nprocesses)))
     results=np.array(results,dtype=object)
-    
     par._terminate_backend()
     get_reusable_executor().shutdown(wait=True)
     
