@@ -107,7 +107,7 @@ class gastimator:
       if plot:
           fig, ax=self.make_plots(niter)
           plt.pause(0.00001)
-          
+      
       gibbs_change=self.rng.randint(0,self.change.size,niter)
 
       outputvals=np.empty((self.npars,niter))
@@ -219,15 +219,15 @@ class gastimator:
                     self.lastchainll=np.append(self.lastchainll,outputll)
                     self.lastchainaccept=np.append(self.lastchainaccept,accepted)
                     test=(np.abs(newmean-oldmean) < self.precision)
-                    if test.sum() == test.size and (acceptrate >= self.targetrate):
+                    if test[self.change].sum() == test[self.change].size and (acceptrate >= self.targetrate):
                          converged=1      
                          if (not self.silent): print("Chain "+str(progid)+" converged: LL: "+str(np.max(outputll))+" - Accept rate:"+str(acceptrate))
                     else:
                          if  (not self.silent): print("     Chain "+str(progid)+" has not converged - Accept rate: "+str(acceptrate))
-                         if test.sum() == test.size:
+                         if test[self.change].sum() == test[self.change].size:
                              if  (not self.silent): print("     --> Target rate not reached")
                          else: 
-                             if  (not self.silent): print("     --> Still varying: "+str(self.labels[~test]))
+                             if  (not self.silent): print("     --> Still varying: "+str(self.labels[self.change][~test[self.change]]))
                      
                 oldmean=newmean    
                 count += numatonce
@@ -251,8 +251,6 @@ class gastimator:
     self.precision=np.array(self.precision)
     self.labels=np.array(self.labels)
     
-
-    
                 
     if np.any(self.guesses == None):
          raise Exception('Please set initial guesses')
@@ -267,6 +265,8 @@ class gastimator:
         except:
             if self.npars != 1:
                 raise Exception('Number of priors given does not match number of parameters')
+        
+
 
              
     
@@ -301,6 +301,14 @@ class gastimator:
   def run(self, fdata, error, niters, numatonce=None, burn=None, nchains=1, plot=True, output=None, seed=None): 
     # check all required inputs set
     self.input_checks()
+    
+    if not self.silent:
+        stri=''
+        for name,pr in zip(self.labels,self.prior_func):
+            if callable(pr):
+                stri=stri+' '+name
+        if stri!='':
+            print("Non uniform priors used: "+stri)
 
     # set up variables needed
     self.fdata=fdata
@@ -331,15 +339,18 @@ class gastimator:
         self.progline.append('Doing chain '+np.str(chainno+1))
         
     knob=(0.5*(self.max-self.min))
-        
-    par= Parallel(n_jobs= self.nprocesses, verbose=verboselev)
     
+    
+        
+    ## do initial chains in parallel    
+    par= Parallel(n_jobs= self.nprocesses, verbose=verboselev)
     results=par(delayed(unwrap_self)(i) for i in zip([self]*nchains, [self.guesses]*nchains,[int(float(niters))]*nchains,[numatonce]*nchains,[knob]*nchains, [False]*nchains, [False]*nchains,np.arange(nchains)))
     results=np.array(results,dtype=object)
-    
     par._terminate_backend()
     get_reusable_executor().shutdown(wait=True)
-    
+    ##
+    #debug line #results=unwrap_self((self, self.guesses,int(float(niters)),numatonce,knob, False, False,0))
+
     bestchain=np.argmax(np.max(np.stack(results[:,1]),axis=1))
     bestvalinbestchain=np.argmax(results[bestchain,1])
     
