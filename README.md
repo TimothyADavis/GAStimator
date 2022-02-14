@@ -1,4 +1,6 @@
 # GAStimator
+[![Python 3.8](https://img.shields.io/badge/python-3.8-blue.svg)](https://www.python.org/downloads/release/python-382/) [![PyPI version](https://badge.fury.io/py/gastimator.svg)](https://badge.fury.io/py/gastimator) 
+
 Implementation of a Python MCMC gibbs-sampler with adaptive stepping. 
 
 While this is a simple MCMC algorithm, it is robust and stable and well suited to high dimensional problems with many degrees of freedom and very sharp likelihood features. For instance kinematic modelling of datacubes with this code has been found to be orders of magnitude quicker than using more advanced affine-invariant MCMC methods. 
