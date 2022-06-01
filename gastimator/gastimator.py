@@ -43,15 +43,24 @@ class gastimator:
       self.lnlike_func=lnlike
       
     
+  # def likelihood(self,values):
+  #
+  #   priorval=1
+  #   for ival,prior in enumerate(self.prior_func):
+  #       if callable(prior):
+  #           priorval*=prior(values[ival],allvalues=values,ival=ival)
+  #
+  #   model=self.model(values,*self.args,**self.kwargs)
+  #   return self.lnlike_func(self.fdata,model,self.error) + np.log(priorval, where=(priorval!=0))
   def likelihood(self,values):
     
-    priorval=1
+    priorval=0
     for ival,prior in enumerate(self.prior_func):
         if callable(prior):
-            priorval*=prior(values[ival],allvalues=values,ival=ival)
+            priorval+=prior(values[ival],allvalues=values,ival=ival)
     
     model=self.model(values,*self.args,**self.kwargs)
-    return self.lnlike_func(self.fdata,model,self.error) + np.log(priorval, where=(priorval!=0))
+    return self.lnlike_func(self.fdata,model,self.error) + priorval 
 
     
 
@@ -292,10 +301,10 @@ class gastimator:
              raise Exception('Parameter(s) '+str(self.labels[(self.max-self.min) < 0])+' have incorrect minumum/maximum bounds')
  
     if np.any((self.guesses<self.min)):
-             raise Exception('Parameter(s) '+str(self.labels[(self.guesses<self.min)])+' have an initial guess lower than the minimum allowed.')
+             raise Exception('Parameter(s) '+str(self.labels[(self.guesses<self.min)])+' have an initial guess ('+str(self.guesses[(self.guesses<self.min)])+') lower than the minimum allowed ('+str(self.min[(self.guesses<self.min)])+').')
              
     if np.any((self.guesses>self.max)):
-             raise Exception('Parameter(s) '+str(self.labels[(self.guesses>self.max)])+' have an initial guess higher than the maximum allowed.')
+             raise Exception('Parameter(s) '+str(self.labels[(self.guesses>self.max)])+' have an initial guess higher ('+str(self.guesses[(self.guesses>self.max)])+') than the maximum allowed ('+str(self.max[(self.guesses>self.max)])+').')
 
 
   def run(self, fdata, error, niters, numatonce=None, burn=None, nchains=1, plot=True, output=None, seed=None): 

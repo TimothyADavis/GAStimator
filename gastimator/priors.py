@@ -12,6 +12,6 @@ class priors:
             self.sigma=sigma
               
         def eval(self,x,**kwargs):
-            x = (x - self.mu) / self.sigma
-            return np.exp(-x*x/2.0) / np.sqrt(2.0*np.pi) / self.sigma
+            xs = (x - self.mu) / self.sigma
+            return (-(xs*xs)/2.0) - np.log(2.5066282746310002*self.sigma) #returns ln(prior)
             
