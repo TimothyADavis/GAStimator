@@ -146,7 +146,7 @@ class gastimator:
           
           
      
-      acceptrate=np.float(n_accept)/niter
+      acceptrate=float(n_accept)/niter
       
 
       
