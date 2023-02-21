@@ -39,7 +39,7 @@ class gastimator:
       self.lastchain=None
       self.lastchainll=None
       self.lastchainaccept=None
-      self.nprocesses=np.int(cpu_count())-1
+      self.nprocesses=int(cpu_count())-1
       self.lnlike_func=lnlike
       
     
@@ -114,8 +114,8 @@ class gastimator:
      
 
       if plot:
-          fig, ax=self.make_plots(niter)
-          plt.pause(0.00001)
+          fig, ax=self.make_plots(niter,progid=progid)
+          #plt.pause(0.00001)
       
       gibbs_change=self.rng.randint(0,self.change.size,niter)
 
@@ -174,12 +174,13 @@ class gastimator:
      if accept:
          plot2update.plot(i,new_data[index],'bo')
      else: plot2update.plot(i,new_data[index],'ro')
-     fig.canvas.draw()
-     fig.canvas.start_event_loop(0.000001)
+     plt.pause(0.000001)
+     #fig.canvas.draw()
+     #fig.canvas.start_event_loop(0.000001)
      
             
             
-  def make_plots(self, niter):
+  def make_plots(self, niter,progid=0):
         nplots=self.npars
         plotfac=self.factors(nplots)
         
@@ -188,7 +189,7 @@ class gastimator:
        
             
         for i in range(0,nplots):
-            (ax.flat[i]).set_ylabel(self.labels[i])
+            (ax.flat[i]).set_ylabel(self.labels[i]+str(progid))
             (ax.flat[i]).set_xlim([0,niter])
             (ax.flat[i]).set_ylim([self.min[i],self.max[i]])
             
@@ -345,29 +346,45 @@ class gastimator:
 
     self.progline=[]
     for chainno in range(0,nchains):
-        self.progline.append('Doing chain '+np.str(chainno+1))
+        self.progline.append('Doing chain '+str(chainno+1))
         
     knob=(0.5*(self.max-self.min))
     
-    
-        
-    ## do initial chains in parallel    
-    par= Parallel(n_jobs= self.nprocesses, verbose=verboselev)
-    results=par(delayed(unwrap_self)(i) for i in zip([self]*nchains, [self.guesses]*nchains,[int(float(niters))]*nchains,[numatonce]*nchains,[knob]*nchains, [False]*nchains, [False]*nchains,np.arange(nchains)))
-    results=np.array(results,dtype=object)
-    par._terminate_backend()
-    get_reusable_executor().shutdown(wait=True)
-    ##
-    #debug line #results=unwrap_self((self, self.guesses,int(float(niters)),numatonce,knob, False, False,0))
+    #breakpoint()
+    if (self.nprocesses>1)&(nchains>1):    
+        ## do initial chains in parallel    
+        #breakpoint()
+        try:
+            par= Parallel(n_jobs= self.nprocesses, verbose=verboselev)
+            results=par(delayed(unwrap_self)(i) for i in zip([self]*nchains, [self.guesses]*nchains,[int(float(niters))]*nchains,[numatonce]*nchains,[knob]*nchains, [plot]*nchains, [False]*nchains,np.arange(nchains)))
+        except:
+            par= Parallel(n_jobs= self.nprocesses, verbose=verboselev, prefer="threads")
+            results=par(delayed(unwrap_self)(i) for i in zip([self]*nchains, [self.guesses]*nchains,[int(float(niters))]*nchains,[numatonce]*nchains,[knob]*nchains, [plot]*nchains, [False]*nchains,np.arange(nchains)))
+        results=np.array(results,dtype=object)
+        par._terminate_backend()
+        get_reusable_executor().shutdown(wait=True)
+        ##
+        #debug line #results=unwrap_self((self, self.guesses,int(float(niters)),numatonce,knob, False, False,0))
 
-    bestchain=np.argmax(np.max(np.stack(results[:,1]),axis=1))
-    bestvalinbestchain=np.argmax(results[bestchain,1])
+        bestchain=np.argmax(np.max(np.stack(results[:,1]),axis=1))
+        bestvalinbestchain=np.argmax(results[bestchain,1])
     
 
-    verybestvalues=np.stack(results[bestchain,0])[:,bestvalinbestchain]
-    verybestknob=results[bestchain,2]
-    verybestll=np.stack(results[bestchain,1])[bestvalinbestchain]
-            
+        verybestvalues=np.stack(results[bestchain,0])[:,bestvalinbestchain]
+        verybestknob=results[bestchain,2]
+        verybestll=np.stack(results[bestchain,1])[bestvalinbestchain]
+    else:
+        for chainno in range(0,nchains):
+             if not self.silent: print('Doing chain '+str(chainno+1))
+             #knob=(0.5*(self.max-self.min))
+             outputvals, outputll, best_knob = self.run_a_chain(self.guesses,niters,numatonce,knob,plot=plot)
+             #breakpoint()
+             if (np.max(outputll) > verybestll) or (chainno == 0):
+                 if not self.silent: print("Best chain so far!")
+                 w,=np.where(outputll == np.max(outputll))
+                 verybestvalues=outputvals[:,w[0]].reshape(self.npars) 
+                 verybestknob=best_knob
+                 verybestll=np.max(outputll)        
             
     if not self.silent: 
         print("Best fit:")
@@ -377,9 +394,12 @@ class gastimator:
 
 
     results = []
-    par= Parallel(n_jobs= self.nprocesses, verbose=verboselev)
-    
-    results=par(delayed(unwrap_self)(i) for i in zip([self]*self.nprocesses, [verybestvalues]*self.nprocesses,[int(float(niters)/float(self.nprocesses))]*self.nprocesses,[numatonce]*self.nprocesses,[verybestknob]*self.nprocesses, [False]*self.nprocesses, [True]*self.nprocesses,np.arange(self.nprocesses)))
+    try:
+        par= Parallel(n_jobs= self.nprocesses, verbose=verboselev)
+        results=par(delayed(unwrap_self)(i) for i in zip([self]*self.nprocesses, [verybestvalues]*self.nprocesses,[int(float(niters)/float(self.nprocesses))]*self.nprocesses,[numatonce]*self.nprocesses,[verybestknob]*self.nprocesses, [False]*self.nprocesses, [True]*self.nprocesses,np.arange(self.nprocesses)))
+    except:
+        par= Parallel(n_jobs= self.nprocesses, verbose=verboselev,prefer="threads")
+        results=par(delayed(unwrap_self)(i) for i in zip([self]*self.nprocesses, [verybestvalues]*self.nprocesses,[int(float(niters)/float(self.nprocesses))]*self.nprocesses,[numatonce]*self.nprocesses,[verybestknob]*self.nprocesses, [False]*self.nprocesses, [True]*self.nprocesses,np.arange(self.nprocesses)))
     results=np.array(results,dtype=object)
     par._terminate_backend()
     get_reusable_executor().shutdown(wait=True)
