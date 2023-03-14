@@ -354,12 +354,12 @@ class gastimator:
     if (self.nprocesses>1)&(nchains>1):    
         ## do initial chains in parallel    
         #breakpoint()
-        try:
-            par= Parallel(n_jobs= self.nprocesses, verbose=verboselev)
-            results=par(delayed(unwrap_self)(i) for i in zip([self]*nchains, [self.guesses]*nchains,[int(float(niters))]*nchains,[numatonce]*nchains,[knob]*nchains, [plot]*nchains, [False]*nchains,np.arange(nchains)))
-        except:
-            par= Parallel(n_jobs= self.nprocesses, verbose=verboselev, prefer="threads")
-            results=par(delayed(unwrap_self)(i) for i in zip([self]*nchains, [self.guesses]*nchains,[int(float(niters))]*nchains,[numatonce]*nchains,[knob]*nchains, [plot]*nchains, [False]*nchains,np.arange(nchains)))
+        #try:
+        par= Parallel(n_jobs= self.nprocesses, verbose=verboselev)
+        results=par(delayed(unwrap_self)(i) for i in zip([self]*nchains, [self.guesses]*nchains,[int(float(niters))]*nchains,[numatonce]*nchains,[knob]*nchains, [plot]*nchains, [False]*nchains,np.arange(nchains)))
+        #except:
+        #    par= Parallel(n_jobs= self.nprocesses, verbose=verboselev, prefer="threads")
+        #    results=par(delayed(unwrap_self)(i) for i in zip([self]*nchains, [self.guesses]*nchains,[int(float(niters))]*nchains,[numatonce]*nchains,[knob]*nchains, [plot]*nchains, [False]*nchains,np.arange(nchains)))
         results=np.array(results,dtype=object)
         par._terminate_backend()
         get_reusable_executor().shutdown(wait=True)
@@ -394,12 +394,12 @@ class gastimator:
 
 
     results = []
-    try:
-        par= Parallel(n_jobs= self.nprocesses, verbose=verboselev)
-        results=par(delayed(unwrap_self)(i) for i in zip([self]*self.nprocesses, [verybestvalues]*self.nprocesses,[int(float(niters)/float(self.nprocesses))]*self.nprocesses,[numatonce]*self.nprocesses,[verybestknob]*self.nprocesses, [False]*self.nprocesses, [True]*self.nprocesses,np.arange(self.nprocesses)))
-    except:
-        par= Parallel(n_jobs= self.nprocesses, verbose=verboselev,prefer="threads")
-        results=par(delayed(unwrap_self)(i) for i in zip([self]*self.nprocesses, [verybestvalues]*self.nprocesses,[int(float(niters)/float(self.nprocesses))]*self.nprocesses,[numatonce]*self.nprocesses,[verybestknob]*self.nprocesses, [False]*self.nprocesses, [True]*self.nprocesses,np.arange(self.nprocesses)))
+    #try:
+    par= Parallel(n_jobs= self.nprocesses, verbose=verboselev)
+    results=par(delayed(unwrap_self)(i) for i in zip([self]*self.nprocesses, [verybestvalues]*self.nprocesses,[int(float(niters)/float(self.nprocesses))]*self.nprocesses,[numatonce]*self.nprocesses,[verybestknob]*self.nprocesses, [False]*self.nprocesses, [True]*self.nprocesses,np.arange(self.nprocesses)))
+    # except:
+    #     par= Parallel(n_jobs= self.nprocesses, verbose=verboselev,prefer="threads")
+    #     results=par(delayed(unwrap_self)(i) for i in zip([self]*self.nprocesses, [verybestvalues]*self.nprocesses,[int(float(niters)/float(self.nprocesses))]*self.nprocesses,[numatonce]*self.nprocesses,[verybestknob]*self.nprocesses, [False]*self.nprocesses, [True]*self.nprocesses,np.arange(self.nprocesses)))
     results=np.array(results,dtype=object)
     par._terminate_backend()
     get_reusable_executor().shutdown(wait=True)
