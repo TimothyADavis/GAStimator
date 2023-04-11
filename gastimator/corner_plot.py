@@ -141,7 +141,7 @@ def corner_plot(xs, like=None, xstry=None, weights=None, labels=None,
         weights = np.asarray(weights)
         assert weights.ndim == 1, 'weights must be 1-D'
         assert xs.shape[1] == weights.shape[0], 'lengths of weights must match number of samples'
-    if "sauron" not in cm._cmap_registry.keys():
+    if "sauron" not in cm._colormaps.keys():
         register_sauron_colormap()
 
     # backwards-compatibility
