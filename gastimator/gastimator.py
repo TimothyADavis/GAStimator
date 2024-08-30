@@ -6,14 +6,16 @@ from tqdm import tqdm
 from joblib import Parallel, delayed,cpu_count  
 from joblib.externals.loky import get_reusable_executor
 
-
 def lnlike(data,model,error):
   # default log-likelihood function
-  chi2=np.nansum((data - model)**2 / error**2)      
+  chi2=np.nansum((data - model)**2 / error**2)
   return -0.5*chi2
-      
+
+
 def unwrap_self(args, **kwarg):
     return gastimator.run_a_chain(*args, **kwarg)
+
+
 
 class gastimator:
   def __init__(self, model,*args, **kwargs):
@@ -42,7 +44,10 @@ class gastimator:
       self.nprocesses=int(cpu_count())-1
       self.lnlike_func=lnlike
       
-    
+  def lnlike(self,data,model,error):
+      # default log-likelihood function
+      chi2=np.nansum((data - model)**2 / error**2)
+      return -0.5*chi2
   # def likelihood(self,values):
   #
   #   priorval=1
@@ -198,7 +203,7 @@ class gastimator:
         
 
 
-        
+     
   def run_a_chain(self,startguess,niters,numatonce,knob,plot=True,final=False,progid=0):
         count=0
         converged=False
@@ -355,8 +360,12 @@ class gastimator:
         ## do initial chains in parallel    
         #breakpoint()
         #try:
-        par= Parallel(n_jobs= self.nprocesses, verbose=verboselev)
-        results=par(delayed(unwrap_self)(i) for i in zip([self]*nchains, [self.guesses]*nchains,[int(float(niters))]*nchains,[numatonce]*nchains,[knob]*nchains, [plot]*nchains, [False]*nchains,np.arange(nchains)))
+        par= Parallel(n_jobs= self.nprocesses, verbose=verboselev,max_nbytes=None)
+        
+        results=par(delayed(unwrap_self)(i) for i in zip([self]*nchains, [self.guesses]*nchains,[int(niters)]*nchains,[numatonce]*nchains,[knob]*nchains, [plot]*nchains, [False]*nchains,np.arange(nchains)))
+        #get_reusable_executor().shutdown(wait=True)
+        #par._terminate_backend()
+        #breakpoint()
         #except:
         #    par= Parallel(n_jobs= self.nprocesses, verbose=verboselev, prefer="threads")
         #    results=par(delayed(unwrap_self)(i) for i in zip([self]*nchains, [self.guesses]*nchains,[int(float(niters))]*nchains,[numatonce]*nchains,[knob]*nchains, [plot]*nchains, [False]*nchains,np.arange(nchains)))
@@ -373,6 +382,7 @@ class gastimator:
         verybestknob=results[bestchain,2]
         verybestll=np.stack(results[bestchain,1])[bestvalinbestchain]
     else:
+        #print("Doing unparallel")
         for chainno in range(0,nchains):
              if not self.silent: print('Doing chain '+str(chainno+1))
              #knob=(0.5*(self.max-self.min))
@@ -394,7 +404,7 @@ class gastimator:
 
     results = []
     #try:
-    par= Parallel(n_jobs= self.nprocesses, verbose=verboselev)
+    par= Parallel(n_jobs= self.nprocesses, verbose=verboselev,max_nbytes=None)
     results=par(delayed(unwrap_self)(i) for i in zip([self]*self.nprocesses, [verybestvalues]*self.nprocesses,[int(float(niters)/float(self.nprocesses))]*self.nprocesses,[numatonce]*self.nprocesses,[verybestknob]*self.nprocesses, [False]*self.nprocesses, [True]*self.nprocesses,np.arange(self.nprocesses)))
     # except:
     #     par= Parallel(n_jobs= self.nprocesses, verbose=verboselev,prefer="threads")
